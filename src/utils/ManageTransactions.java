@@ -11,23 +11,23 @@ import java.util.List;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 
-import transactionController.Database;
-
+import transactionController.DBclass;
 
 @SuppressWarnings("serial")
 public class ManageTransactions extends JFrame {
     static ArrayList<JFrame> frameList = new ArrayList<>();
     
     // connection with DB
-	static Database db = new Database();
-	static Connection con = getConnection();
+	//static Database db = new Database();
+	static Connection con;// = getConnection();
 	
 	// Table UI
 	static JTable table;
 	static JComboBox<String> comboBoxInOrOut;
 	static JComboBox<String> comboBoxBranchPath;
 	static JTextField textStartDate;
-	static JTextField textEndDate;    
+	static JTextField textEndDate;
+	int total_in = 0; int total_out = 0;
 
 	// Query
 	class Query {
@@ -39,25 +39,29 @@ public class ManageTransactions extends JFrame {
 	Query mainQuery = new Query();
 
 	// DB info
-	static ArrayList<ArrayList<String>> fields_info = db.collectFields(con);
+	static ArrayList<ArrayList<String>> fields_info;
 	static ArrayList<String> idCollection = new ArrayList<>();
     static HashMap<String, String> typeDictionary = new HashMap<>();
-    static List<String> paths;// = TreePersistence.collectPaths();
+    static List<String> paths;
     static List<String> extra_fields = new ArrayList<>();
     
     private DefaultTableModel tableModel;
 
     public ManageTransactions() {
+    	con = DBclass.getConnection();
+    	fields_info = DBclass.collectFields(con);
+    	System.out.println(fields_info);
         paths = TreePersistence.collectPaths();
-        // Connect to Database       
+        // Connect to Database
+        
     	setTitle("Manage Transactions");
         setSize(800, 600); // 조정 가능한 크기
         setLocationRelativeTo(null);
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 
         // UI components
-        JLabel labelStartDate = new JLabel("Begin date:");
-        JLabel labelEndDate = new JLabel("End date:");
+        JLabel labelStartDate = new JLabel("Begin date(yyyy-mm-dd):");
+        JLabel labelEndDate = new JLabel("End date(yyyy-mm-dd):");
         textStartDate = new JTextField(mainQuery.beginDate);
         textEndDate = new JTextField(mainQuery.endDate);
         String[] branches = new String[paths.size()];
@@ -70,6 +74,7 @@ public class ManageTransactions extends JFrame {
         comboBoxInOrOut = new JComboBox<>(transactionTypes);
 
         JButton buttonInquire = new JButton("Inquire");
+        JButton buttonDataViewer = new JButton("Data Viewer");
         JButton buttonAdd = new JButton("Add");
         JButton buttonDelete = new JButton("Delete");
         JButton buttonQuerySetting = new JButton("Query Setting");
@@ -114,15 +119,17 @@ public class ManageTransactions extends JFrame {
         buttonPanel.add(buttonQuerySetting);
         buttonPanel.add(buttonAdd);
         buttonPanel.add(buttonDelete);
+        buttonPanel.add(buttonDataViewer);
         
         gbc.gridx = 0;	gbc.gridy = 4;	gbc.gridwidth = 4;
         topPanel.add(buttonPanel, gbc);
 
-        // Add table to the center
+        // Add table to the center        
         tablesHeaders();
-        String sqlQuery = makeQuerySql();
-//        String sql = "SELECT * FROM transactions ORDER BY transaction_date, updateTime";
-        tableSetting(sqlQuery);
+
+        //String sqlQuery = makeQuerySql();
+        String sql = "SELECT * FROM transactions ORDER BY transaction_date, updateTime";
+        tableSetting(sql);
         table = new JTable(tableModel);
         JScrollPane scrollPane = new JScrollPane(table);
         
@@ -142,6 +149,11 @@ public class ManageTransactions extends JFrame {
         add(bottomPanel, BorderLayout.SOUTH);
         
         // Event listeners and other logic can be added as needed
+        buttonDataViewer.addActionListener(e->{
+        	System.out.println(total_in);
+        	System.out.println(total_out);
+        });
+        
         buttonExit.addActionListener(e->{
             for(int i = 0; i < frameList.size(); i++){
                 frameList.get(i).dispose();
@@ -177,7 +189,7 @@ public class ManageTransactions extends JFrame {
         for(int i = 0; i < fields_info.size(); i++) {
         	typeDictionary.put(fields_info.get(i).get(0), fields_info.get(i).get(1));
         	String field_name = fields_info.get(i).get(0);
-        	if(Database.default_fields.contains(field_name) == false) {
+        	if(DBclass.default_fields.contains(field_name) == false) {
         		extra_fields.add(field_name);
         	}
         }
@@ -187,7 +199,7 @@ public class ManageTransactions extends JFrame {
            header[i] = extra_fields.get(j++);
         }
         
-        tableModel = new DefaultTableModel(header, 0); // 0 for row count       
+        tableModel = new DefaultTableModel(header, 0); // 0 for row count
     }
     
     private void tableSetting(String query) {
@@ -196,9 +208,10 @@ public class ManageTransactions extends JFrame {
      	   tableModel.removeRow(i);
         }
 
-        ArrayList<ArrayList<String>> tableData = db.fetchDataFromDatabase(con, query);
+        ArrayList<ArrayList<String>> tableData = DBclass.fetchDataFromDatabase(con, query);
         int balance = 0;
-        int total_in = 0, total_out = 0;
+        
+        total_in = 0; total_out = 0;
         for(int i = 0; i < tableData.size(); i++) {
         	System.out.println(tableData.get(i));
            
@@ -231,7 +244,7 @@ public class ManageTransactions extends JFrame {
     	try {
             int row = table.getSelectedRow();
             String id = idCollection.get(row);
-            db.deleteData(con, id);
+            DBclass.deleteData(con, id);
             String sql = makeQuerySql();
             tableSetting(sql);
     	}catch(Exception e) {
@@ -239,10 +252,6 @@ public class ManageTransactions extends JFrame {
     	}
     }
     
-    private void addition() {
-        createInputForm();
-    }
-      
     private String makeQuerySql(){
         //Date Query
     	String sqlQuery = "SELECT * FROM transactions";
@@ -267,8 +276,7 @@ public class ManageTransactions extends JFrame {
     }    
     
     private void inquireTable() {
-    	String sqlQuery = "SELECT * FROM transactions";
-    	
+    	String sqlQuery = "SELECT * FROM transactions";    	
     	String beginDate = (String) textStartDate.getText();
     	String endDate = (String) textEndDate.getText();
         String selectedInOrOut = (String) comboBoxInOrOut.getSelectedItem();
@@ -286,7 +294,7 @@ public class ManageTransactions extends JFrame {
        tableSetting(sql);
     }
 
-    public void createInputForm() {
+    private void addition() {
         String[] branches = new String[paths.size()];
         for(int i = 0; i < paths.size(); i++) {
            branches[i] = paths.get(i);
@@ -300,13 +308,6 @@ public class ManageTransactions extends JFrame {
         JPanel mainPanel = new JPanel();
         mainPanel.setLayout(new BoxLayout(mainPanel, BoxLayout.Y_AXIS));
 
-        // 트랜잭션 날짜 입력
-        JPanel datePanel = new JPanel();
-        datePanel.add(new JLabel("Transaction Date:"));
-        JTextField transactionDateInput = new JTextField(10);
-        datePanel.add(transactionDateInput);
-        mainPanel.add(datePanel);
-
         // 지점 선택 콤보박스
         JPanel branchPanel = new JPanel();
         branchPanel.add(new JLabel("Branch:"));
@@ -315,16 +316,33 @@ public class ManageTransactions extends JFrame {
         branchPanel.add(branchComboBox);
         mainPanel.add(branchPanel);
 
+        // 트랜잭션 날짜 입력
+        JPanel datePanel = new JPanel();
+        // 트랜잭션 날짜 입력
+        datePanel.add(new JLabel("YY(date):"));
+        JTextField inputYear = new JTextField(8);
+        datePanel.add(inputYear);
+
+        datePanel.add(new JLabel("MM(date):"));
+        JTextField inputMonth = new JTextField(4);
+        datePanel.add(inputMonth);
+
+        datePanel.add(new JLabel("DD(date):"));
+        JTextField inputDay = new JTextField(4);
+        datePanel.add(inputDay);
+
+        mainPanel.add(datePanel);
+
         // In/Out 입력
         JPanel inPanel = new JPanel();
         inPanel.add(new JLabel("In:"));
-        JTextField inInput = new JTextField(5);
+        JTextField inInput = new JTextField(15);
         inPanel.add(inInput);
         mainPanel.add(inPanel);
 
         JPanel outPanel = new JPanel();
         outPanel.add(new JLabel("Out:"));
-        JTextField outInput = new JTextField(5);
+        JTextField outInput = new JTextField(15);
         outPanel.add(outInput);
         mainPanel.add(outPanel);
 
@@ -333,6 +351,7 @@ public class ManageTransactions extends JFrame {
         
         for (int i = 0; i < extra_fields.size(); i++) {
         	String field = extra_fields.get(i);
+            System.out.println(field);
             JPanel extraPanel = new JPanel();
             extraPanel.add(new JLabel(field + ":"));
             JTextField extraInput = new JTextField(10);
@@ -350,19 +369,43 @@ public class ManageTransactions extends JFrame {
         JButton addButton = new JButton("Add");
         addButton.addActionListener(e -> {
             // 추가 버튼 클릭 시 로직
-            messageLabel.setText("Added!");
-            String transaction_date = transactionDateInput.getText();
+            String transaction_date = "";
+            try{
+                int yy = Integer.parseInt(inputYear.getText());
+                int mm = Integer.parseInt(inputMonth.getText());
+                int dd = Integer.parseInt(inputDay.getText());
+                if(!(yy > 0 && mm > 0 && dd > 0)){
+                    throw new Exception("Error: input date value");
+                }
+
+                if(yy<100)yy+=2000;
+                transaction_date += String.valueOf(yy);
+                transaction_date += "-" + String.valueOf(mm+100).substring(1);
+                transaction_date += "-" + String.valueOf(dd+100).substring(1);
+
+            }catch(Exception e1){
+                // nothing..
+                messageLabel.setText("There is a problem with the input");
+                System.out.println(e1);
+                return;
+            }
+
             String branch = branchComboBox.getSelectedItem().toString();
             String input = inInput.getText();
             String output = outInput.getText();
             ArrayList<String> extra_values = new ArrayList<>();
-            for(int i = 0; i < extra_fields.size();i++) {
+            for(int i = 0; i < extra_fields.size(); i++) {
             	extra_values.add(extraInputList.get(i).getText());
             }
             if(isValidAddition(transaction_date, input, output, extra_values)) {
             	additionQuery(transaction_date, branch, input, output, extra_values);
+                String sqlQuery = makeQuerySql();
+                tableSetting(sqlQuery);		
+                messageLabel.setText("added");
                 frame.dispose();
-            }            
+            }else{
+                messageLabel.setText("There is a problem with the input");
+            }
         });
         buttonPanel.add(addButton);
 
@@ -381,7 +424,6 @@ public class ManageTransactions extends JFrame {
 
     private void additionQuery(String transaction_date, String branch, String input, String output,
 			ArrayList<String> extra_values) {
-		// TODO Auto-generated method stub
     	int cashFlow = 0;
 		if(input.length() > 0) {
 			cashFlow += Integer.parseInt(input);
@@ -394,7 +436,7 @@ public class ManageTransactions extends JFrame {
 			sql += ", " + extra_fields.get(i);
 		}
 		sql += ") ";
-
+		
 		sql += "VALUES (";
 		sql += "'" + transaction_date + "'";
 		sql += ",'" + branch + "'";
@@ -409,22 +451,19 @@ public class ManageTransactions extends JFrame {
 					sql += ", " + extra_values.get(i);
 				}else {
 					sql += ", '" + extra_values.get(i) + "'";
-				}
-				
+				}				
 			}
 		}
 		sql += ") ";
 		System.out.println(sql);
-		try {
-			Connection cont = db.getConnection();
-	        PreparedStatement insert = cont.prepareStatement(sql);
+		try {			
+	        PreparedStatement insert = con.prepareStatement(sql);
 	        insert.execute();
 			System.out.println("Addition Success");
 		}catch(Exception e){
 			System.out.println(e);
 		}
-    	String sqlQuery = makeQuerySql();
-    	tableSetting(sqlQuery);		
+		
 	}
 
 	private static boolean isValidAddition(String transaction_date, String input, String output, ArrayList<String> extra_values) {
@@ -456,16 +495,16 @@ public class ManageTransactions extends JFrame {
 
 	public static Connection getConnection() {
 		try {
-	        String user = System.getenv("DB_USER");
-	        String url = System.getenv("DB_URL");
-	        String driver = System.getenv("DB_DRIVER");
-	        String pass = System.getenv("DB_PASS");
-
-			Class.forName(driver);
-			Connection con = DriverManager.getConnection(url, user, pass);
+			String url = "jdbc:h2:~/test"; // 데이터베이스 URL
+			String user = "sa"; // 사용자 이름
+			String password = ""; // 비밀번호
+			
+			// 연결 시도
+			Connection conn = DriverManager.getConnection(url, user, password);
 			System.out.println("The Connection Succesful!");
-			return con;
+			return conn;
 		}catch(Exception e) {
+			System.out.println("Connection has been fail.. "); 
 			System.out.println(e.getMessage());
 			return null;
 		}

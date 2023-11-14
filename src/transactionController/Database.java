@@ -17,9 +17,12 @@ import java.util.List;
 import java.util.Map;
 
 public class Database {
+	
+	
 //	public Connection con = getConnection();
 	public static HashSet<String> default_fields = new HashSet<>(Arrays.asList("transaction_date", "cashFlow", "branch", "updateTime","id"));
-	public static void main(String[] args) {		
+	public static void main(String[] args) {
+		
 	//	System.out.println("FUCK YOU SEX1");
 //        System.out.println("FUCK YOU SEX2");
 //        dropTable(con);
@@ -183,17 +186,18 @@ public class Database {
 	    Statement stmt = null;
 	    try {
 	        // 테이블 구조를 확인하는 SQL 명령
-	        String sql = "DESCRIBE transactions";
+//	        String sql = "DESCRIBE transactions";
+	        String sql = "SELECT * FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'TRANSACTIONS'";
 
 	        stmt = con.createStatement();
 	        rs = stmt.executeQuery(sql);
 
-	        System.out.println("Field\tType\tNull\tKey\tDefault\tExtra");
+//	        System.out.println("Field\tType\tNull\tKey\tDefault\tExtra");
 	        while(rs.next()) {
 	            // 각 필드의 상세 정보 출력
 	            ArrayList<String> newRow = new ArrayList<>();
-	            newRow.add(rs.getString("Field"));
-	            newRow.add(rs.getString("Type"));
+	            newRow.add(rs.getString("COLUMN_NAME"));
+	            newRow.add(rs.getString("TYPE_NAME"));
 	            fields.add(newRow);	            
 	        }
 	    } catch(Exception e) {
@@ -331,17 +335,16 @@ public class Database {
 	    }
 	}
 	
-	public Connection getConnection() {
+	public static Connection getConnection() {
 		try {
-	        String user = System.getenv("DB_USER");
-	        String url = System.getenv("DB_URL");
-	        String driver = System.getenv("DB_DRIVER");
-	        String pass = System.getenv("DB_PASS");
-	        			
-			Class.forName(driver);
-			Connection con = DriverManager.getConnection(url, user, pass);
+			String url = "jdbc:h2:~/test"; // 데이터베이스 URL
+			String user = "sa"; // 사용자 이름
+			String password = ""; // 비밀번호
+			
+			// 연결 시도
+			Connection conn = DriverManager.getConnection(url, user, password);
 			System.out.println("The Connection Succesful!");
-			return con;
+			return conn;
 		}catch(Exception e) {
 			System.out.println(e.getMessage());
 			return null;

@@ -4,6 +4,11 @@ import java.awt.Dimension;
 import java.awt.event.ActionListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
+import java.sql.Statement;
 import java.util.ArrayList;
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -11,13 +16,14 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 
+import transactionController.Database;
 import utils.ManageTransactions;
 import utils.ManageTree;
 
 public class FrameMain {
     static ArrayList<JFrame> openFrames = new ArrayList<>();
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(new Runnable() {
+    public static void main(String[] args) {   	
+    	SwingUtilities.invokeLater(new Runnable() {
             public void run() {
                 createAndShowGUI();
             }
